@@ -1,0 +1,1250 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <link rel="stylesheet" href="css/leaflet.css">
+        <link rel="stylesheet" href="css/L.Control.Layers.Tree.css">
+        <link rel="stylesheet" href="css/L.Control.Locate.min.css">
+        <link rel="stylesheet" href="css/qgis2web.css">
+        <link rel="stylesheet" href="css/fontawesome-all.min.css">
+        <link rel="stylesheet" href="css/MarkerCluster.css">
+        <link rel="stylesheet" href="css/MarkerCluster.Default.css">
+        <link rel="stylesheet" href="css/leaflet-search.css">
+        <link rel="stylesheet" href="css/filter.css">
+<link rel="stylesheet" href="css/nouislider.min.css">
+        <link rel="stylesheet" href="css/leaflet-control-geocoder.Geocoder.css">
+        <link rel="stylesheet" href="css/leaflet-measure.css">
+        <style>
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+        </style>
+        <title>Directory-Bucknell-@Master v02-QGIS2Web</title>
+    </head>
+    <body>
+        <div id="map">
+        </div>
+        <script src="js/qgis2web_expressions.js"></script>
+        <script src="js/leaflet.js"></script>
+        <script src="js/L.Control.Layers.Tree.min.js"></script>
+        <script src="js/L.Control.Locate.min.js"></script>
+        <script src="js/leaflet.rotatedMarker.js"></script>
+        <script src="js/leaflet.pattern.js"></script>
+        <script src="js/leaflet-hash.js"></script>
+        <script src="js/Autolinker.min.js"></script>
+        <script src="js/rbush.min.js"></script>
+        <script src="js/labelgun.min.js"></script>
+        <script src="js/labels.js"></script>
+        <script src="js/leaflet-control-geocoder.Geocoder.js"></script>
+        <script src="js/leaflet-measure.js"></script>
+        <script src="js/leaflet.markercluster.js"></script>
+        <script src="js/leaflet-search.js"></script>
+        <script src="js/tailDT.js"></script>
+<script src="js/nouislider.min.js"></script>
+<script src="js/wNumb.js"></script>
+        <script src="data/MasterStateTotals_6.js"></script>
+        <script src="data/MasterClustered_7.js"></script>
+        <script src="data/MasterwNames_8.js"></script>
+        <script src="data/Master_9.js"></script>
+        <script>
+        var highlightLayer;
+        function highlightFeature(e) {
+            highlightLayer = e.target;
+
+            if (e.target.feature.geometry.type === 'LineString' || e.target.feature.geometry.type === 'MultiLineString') {
+              highlightLayer.setStyle({
+                color: '#ffff00',
+              });
+            } else {
+              highlightLayer.setStyle({
+                fillColor: '#ffff00',
+                fillOpacity: 1
+              });
+            }
+            highlightLayer.openPopup();
+        }
+        var map = L.map('map', {
+            zoomControl:false, maxZoom:28, minZoom:1
+        })
+        var hash = new L.Hash(map);
+        map.attributionControl.setPrefix('<a href="https://github.com/tomchadwin/qgis2web" target="_blank">qgis2web</a> &middot; <a href="https://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> &middot; <a href="https://qgis.org">QGIS</a>');
+        var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
+        // remove popup's row if "visible-with-data"
+        function removeEmptyRowsFromPopupContent(content, feature) {
+         var tempDiv = document.createElement('div');
+         tempDiv.innerHTML = content;
+         var rows = tempDiv.querySelectorAll('tr');
+         for (var i = 0; i < rows.length; i++) {
+             var td = rows[i].querySelector('td.visible-with-data');
+             var key = td ? td.id : '';
+             if (td && td.classList.contains('visible-with-data') && feature.properties[key] == null) {
+                 rows[i].parentNode.removeChild(rows[i]);
+             }
+         }
+         return tempDiv.innerHTML;
+        }
+        // add class to format popup if it contains media
+		function addClassToPopupIfMedia(content, popup) {
+			var tempDiv = document.createElement('div');
+			tempDiv.innerHTML = content;
+			if (tempDiv.querySelector('td img')) {
+				popup._contentNode.classList.add('media');
+					// Delay to force the redraw
+					setTimeout(function() {
+						popup.update();
+					}, 10);
+			} else {
+				popup._contentNode.classList.remove('media');
+			}
+		}
+        var title = new L.Control({'position':'topright'});
+        title.onAdd = function (map) {
+            this._div = L.DomUtil.create('div', 'info');
+            this.update();
+            return this._div;
+        };
+        title.update = function () {
+            this._div.innerHTML = '<h2>Directory-Bucknell-@Master v02-QGIS2Web</h2>';
+        };
+        title.addTo(map);
+        var zoomControl = L.control.zoom({
+            position: 'topleft'
+        }).addTo(map);
+        L.control.locate({locateOptions: {maxZoom: 19}}).addTo(map);
+        var measureControl = new L.Control.Measure({
+            position: 'topleft',
+            primaryLengthUnit: 'feet',
+            secondaryLengthUnit: 'miles',
+            primaryAreaUnit: 'sqfeet',
+            secondaryAreaUnit: 'sqmiles'
+        });
+        measureControl.addTo(map);
+        document.getElementsByClassName('leaflet-control-measure-toggle')[0].innerHTML = '';
+        document.getElementsByClassName('leaflet-control-measure-toggle')[0].className += ' fas fa-ruler';
+        var bounds_group = new L.featureGroup([]);
+        function setBounds() {
+            if (bounds_group.getLayers().length) {
+                map.fitBounds(bounds_group.getBounds());
+            }
+        }
+        map.createPane('pane_MapWazeRoad_0');
+        map.getPane('pane_MapWazeRoad_0').style.zIndex = 400;
+        var layer_MapWazeRoad_0 = L.tileLayer('https://livemap-tiles3.waze.com/tiles/{z}/{x}/{y}.png', {
+            pane: 'pane_MapWazeRoad_0',
+            opacity: 1.0,
+            attribution: '',
+            minZoom: 1,
+            maxZoom: 28,
+            minNativeZoom: 0,
+            maxNativeZoom: 20
+        });
+        layer_MapWazeRoad_0;
+        map.createPane('pane_MapGoogleHybrid_1');
+        map.getPane('pane_MapGoogleHybrid_1').style.zIndex = 401;
+        var layer_MapGoogleHybrid_1 = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+            pane: 'pane_MapGoogleHybrid_1',
+            opacity: 1.0,
+            attribution: '<a href="https://www.google.at/permissions/geoguidelines/attr-guide.html">Map data ©2015 Google</a>',
+            minZoom: 1,
+            maxZoom: 28,
+            minNativeZoom: 0,
+            maxNativeZoom: 20
+        });
+        layer_MapGoogleHybrid_1;
+        map.createPane('pane_MapGoogleSatellite_2');
+        map.getPane('pane_MapGoogleSatellite_2').style.zIndex = 402;
+        var layer_MapGoogleSatellite_2 = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+            pane: 'pane_MapGoogleSatellite_2',
+            opacity: 1.0,
+            attribution: '<a href="https://www.google.at/permissions/geoguidelines/attr-guide.html">Map data ©2015 Google</a>',
+            minZoom: 1,
+            maxZoom: 28,
+            minNativeZoom: 0,
+            maxNativeZoom: 20
+        });
+        layer_MapGoogleSatellite_2;
+        map.createPane('pane_MapGoogleRoad_3');
+        map.getPane('pane_MapGoogleRoad_3').style.zIndex = 403;
+        var layer_MapGoogleRoad_3 = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+            pane: 'pane_MapGoogleRoad_3',
+            opacity: 1.0,
+            attribution: '<a href="https://www.google.at/permissions/geoguidelines/attr-guide.html">Map data ©2015 Google</a>',
+            minZoom: 1,
+            maxZoom: 28,
+            minNativeZoom: 0,
+            maxNativeZoom: 20
+        });
+        layer_MapGoogleRoad_3;
+        map.createPane('pane_MapOSMRoad_4');
+        map.getPane('pane_MapOSMRoad_4').style.zIndex = 404;
+        var layer_MapOSMRoad_4 = L.tileLayer('http://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            pane: 'pane_MapOSMRoad_4',
+            opacity: 1.0,
+            attribution: '<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, CC-BY-SA</a>',
+            minZoom: 1,
+            maxZoom: 28,
+            minNativeZoom: 0,
+            maxNativeZoom: 19
+        });
+        layer_MapOSMRoad_4;
+        map.createPane('pane_MapOutline_5');
+        map.getPane('pane_MapOutline_5').style.zIndex = 405;
+        var layer_MapOutline_5 = L.tileLayer('https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', {
+            pane: 'pane_MapOutline_5',
+            opacity: 1.0,
+            attribution: '<a href="https://cartodb.com/basemaps/">Map tiles by CartoDB, under CC BY 3.0. Data by OpenStreetMap, under ODbL.</a>',
+            minZoom: 1,
+            maxZoom: 28,
+            minNativeZoom: 0,
+            maxNativeZoom: 20
+        });
+        layer_MapOutline_5;
+        map.addLayer(layer_MapOutline_5);
+        function pop_MasterStateTotals_6(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    for (var i in e.target._eventParents) {
+                        if (typeof e.target._eventParents[i].resetStyle === 'function') {
+                            e.target._eventParents[i].resetStyle(e.target);
+                        }
+                    }
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2"><strong>Name</strong><br />' + (feature.properties['Name'] !== null ? autolinker.link(feature.properties['Name'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">State Code</th>\
+                        <td>' + (feature.properties['State Code'] !== null ? autolinker.link(feature.properties['State Code'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">State Total #</th>\
+                        <td>' + (feature.properties['State Total'] !== null ? autolinker.link(feature.properties['State Total'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_MasterStateTotals_6_0() {
+            return {
+                pane: 'pane_MasterStateTotals_6',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(229,182,54,1.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_MasterStateTotals_6');
+        map.getPane('pane_MasterStateTotals_6').style.zIndex = 406;
+        map.getPane('pane_MasterStateTotals_6').style['mix-blend-mode'] = 'normal';
+        var layer_MasterStateTotals_6 = new L.geoJson(json_MasterStateTotals_6, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_MasterStateTotals_6',
+            layerName: 'layer_MasterStateTotals_6',
+            pane: 'pane_MasterStateTotals_6',
+            onEachFeature: pop_MasterStateTotals_6,
+            pointToLayer: function (feature, latlng) {
+                var context = {
+                    feature: feature,
+                    variables: {}
+                };
+                return L.circleMarker(latlng, style_MasterStateTotals_6_0(feature));
+            },
+        });
+        var cluster_MasterStateTotals_6 = new L.MarkerClusterGroup({showCoverageOnHover: false,
+            spiderfyDistanceMultiplier: 2});
+        cluster_MasterStateTotals_6.addLayer(layer_MasterStateTotals_6);
+
+        bounds_group.addLayer(layer_MasterStateTotals_6);
+        function pop_MasterClustered_7(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    for (var i in e.target._eventParents) {
+                        if (typeof e.target._eventParents[i].resetStyle === 'function') {
+                            e.target._eventParents[i].resetStyle(e.target);
+                        }
+                    }
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <th scope="row">Name</th>\
+                        <td>' + (feature.properties['Name'] !== null ? autolinker.link(feature.properties['Name'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Deceased?</th>\
+                        <td class="visible-with-data" id="Deceased?">' + (feature.properties['Deceased?'] !== null ? autolinker.link(feature.properties['Deceased?'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Group-Class</th>\
+                        <td>' + (feature.properties['Group-Class'] !== null ? autolinker.link(feature.properties['Group-Class'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Group-Boys-Crew</th>\
+                        <td class="visible-with-data" id="Group-Boys-Crew">' + (feature.properties['Group-Boys-Crew'] !== null ? autolinker.link(feature.properties['Group-Boys-Crew'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Last Name (Maiden Name)</th>\
+                        <td>' + (feature.properties['Last Name (Maiden Name)'] !== null ? autolinker.link(feature.properties['Last Name (Maiden Name)'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">First Name</th>\
+                        <td>' + (feature.properties['First Name'] !== null ? autolinker.link(feature.properties['First Name'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">First Name (Given)</th>\
+                        <td class="visible-with-data" id="First Name (Given)">' + (feature.properties['First Name (Given)'] !== null ? autolinker.link(feature.properties['First Name (Given)'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Married Name (Surname)</th>\
+                        <td class="visible-with-data" id="Married Name (Surname)">' + (feature.properties['Married Name (Surname)'] !== null ? autolinker.link(feature.properties['Married Name (Surname)'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2"><strong>Address Type</strong><br />' + (feature.properties['Address Type'] !== null ? autolinker.link(feature.properties['Address Type'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Street'] !== null ? autolinker.link(feature.properties['Street'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['City'] !== null ? autolinker.link(feature.properties['City'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['State Code'] !== null ? autolinker.link(feature.properties['State Code'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ZIP Code'] !== null ? autolinker.link(feature.properties['ZIP Code'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['eMail (1st)'] !== null ? autolinker.link(feature.properties['eMail (1st)'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['eMail (2nd)'] !== null ? autolinker.link(feature.properties['eMail (2nd)'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Cell Phone</th>\
+                        <td class="visible-with-data" id="Cell Phone">' + (feature.properties['Cell Phone'] !== null ? autolinker.link(feature.properties['Cell Phone'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Home Phone</th>\
+                        <td class="visible-with-data" id="Home Phone">' + (feature.properties['Home Phone'] !== null ? autolinker.link(feature.properties['Home Phone'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_MasterClustered_7_0() {
+            return {
+                pane: 'pane_MasterClustered_7',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(229,182,54,1.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_MasterClustered_7');
+        map.getPane('pane_MasterClustered_7').style.zIndex = 407;
+        map.getPane('pane_MasterClustered_7').style['mix-blend-mode'] = 'normal';
+        var layer_MasterClustered_7 = new L.geoJson(json_MasterClustered_7, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_MasterClustered_7',
+            layerName: 'layer_MasterClustered_7',
+            pane: 'pane_MasterClustered_7',
+            onEachFeature: pop_MasterClustered_7,
+            pointToLayer: function (feature, latlng) {
+                var context = {
+                    feature: feature,
+                    variables: {}
+                };
+                return L.circleMarker(latlng, style_MasterClustered_7_0(feature));
+            },
+        });
+        var cluster_MasterClustered_7 = new L.MarkerClusterGroup({showCoverageOnHover: false,
+            spiderfyDistanceMultiplier: 2});
+        cluster_MasterClustered_7.addLayer(layer_MasterClustered_7);
+
+        bounds_group.addLayer(layer_MasterClustered_7);
+        function pop_MasterwNames_8(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    for (var i in e.target._eventParents) {
+                        if (typeof e.target._eventParents[i].resetStyle === 'function') {
+                            e.target._eventParents[i].resetStyle(e.target);
+                        }
+                    }
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <th scope="row">Name</th>\
+                        <td>' + (feature.properties['Name'] !== null ? autolinker.link(feature.properties['Name'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Deceased?</th>\
+                        <td class="visible-with-data" id="Deceased?">' + (feature.properties['Deceased?'] !== null ? autolinker.link(feature.properties['Deceased?'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Group-Class</th>\
+                        <td>' + (feature.properties['Group-Class'] !== null ? autolinker.link(feature.properties['Group-Class'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Group-Boys-Crew</th>\
+                        <td class="visible-with-data" id="Group-Boys-Crew">' + (feature.properties['Group-Boys-Crew'] !== null ? autolinker.link(feature.properties['Group-Boys-Crew'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Last Name (Maiden Name)</th>\
+                        <td>' + (feature.properties['Last Name (Maiden Name)'] !== null ? autolinker.link(feature.properties['Last Name (Maiden Name)'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">First Name</th>\
+                        <td>' + (feature.properties['First Name'] !== null ? autolinker.link(feature.properties['First Name'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">First Name (Given)</th>\
+                        <td class="visible-with-data" id="First Name (Given)">' + (feature.properties['First Name (Given)'] !== null ? autolinker.link(feature.properties['First Name (Given)'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Married Name (Surname)</th>\
+                        <td class="visible-with-data" id="Married Name (Surname)">' + (feature.properties['Married Name (Surname)'] !== null ? autolinker.link(feature.properties['Married Name (Surname)'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2"><strong>Address Type</strong><br />' + (feature.properties['Address Type'] !== null ? autolinker.link(feature.properties['Address Type'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Street'] !== null ? autolinker.link(feature.properties['Street'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['City'] !== null ? autolinker.link(feature.properties['City'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['State Code'] !== null ? autolinker.link(feature.properties['State Code'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ZIP Code'] !== null ? autolinker.link(feature.properties['ZIP Code'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['eMail (1st)'] !== null ? autolinker.link(feature.properties['eMail (1st)'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['eMail (2nd)'] !== null ? autolinker.link(feature.properties['eMail (2nd)'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Cell Phone</th>\
+                        <td class="visible-with-data" id="Cell Phone">' + (feature.properties['Cell Phone'] !== null ? autolinker.link(feature.properties['Cell Phone'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Home Phone</th>\
+                        <td class="visible-with-data" id="Home Phone">' + (feature.properties['Home Phone'] !== null ? autolinker.link(feature.properties['Home Phone'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_MasterwNames_8_0() {
+            return {
+                pane: 'pane_MasterwNames_8',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(229,182,54,1.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_MasterwNames_8');
+        map.getPane('pane_MasterwNames_8').style.zIndex = 408;
+        map.getPane('pane_MasterwNames_8').style['mix-blend-mode'] = 'normal';
+        var layer_MasterwNames_8 = new L.geoJson(json_MasterwNames_8, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_MasterwNames_8',
+            layerName: 'layer_MasterwNames_8',
+            pane: 'pane_MasterwNames_8',
+            onEachFeature: pop_MasterwNames_8,
+            pointToLayer: function (feature, latlng) {
+                var context = {
+                    feature: feature,
+                    variables: {}
+                };
+                return L.circleMarker(latlng, style_MasterwNames_8_0(feature));
+            },
+        });
+        bounds_group.addLayer(layer_MasterwNames_8);
+        function pop_Master_9(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    for (var i in e.target._eventParents) {
+                        if (typeof e.target._eventParents[i].resetStyle === 'function') {
+                            e.target._eventParents[i].resetStyle(e.target);
+                        }
+                    }
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <th scope="row">Name</th>\
+                        <td>' + (feature.properties['Name'] !== null ? autolinker.link(feature.properties['Name'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Deceased?</th>\
+                        <td class="visible-with-data" id="Deceased?">' + (feature.properties['Deceased?'] !== null ? autolinker.link(feature.properties['Deceased?'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Group-Class</th>\
+                        <td>' + (feature.properties['Group-Class'] !== null ? autolinker.link(feature.properties['Group-Class'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Group-Boys-Crew</th>\
+                        <td class="visible-with-data" id="Group-Boys-Crew">' + (feature.properties['Group-Boys-Crew'] !== null ? autolinker.link(feature.properties['Group-Boys-Crew'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Last Name (Maiden Name)</th>\
+                        <td>' + (feature.properties['Last Name (Maiden Name)'] !== null ? autolinker.link(feature.properties['Last Name (Maiden Name)'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">First Name</th>\
+                        <td>' + (feature.properties['First Name'] !== null ? autolinker.link(feature.properties['First Name'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">First Name (Given)</th>\
+                        <td class="visible-with-data" id="First Name (Given)">' + (feature.properties['First Name (Given)'] !== null ? autolinker.link(feature.properties['First Name (Given)'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Married Name (Surname)</th>\
+                        <td class="visible-with-data" id="Married Name (Surname)">' + (feature.properties['Married Name (Surname)'] !== null ? autolinker.link(feature.properties['Married Name (Surname)'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2"><strong>Address Type</strong><br />' + (feature.properties['Address Type'] !== null ? autolinker.link(feature.properties['Address Type'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Street'] !== null ? autolinker.link(feature.properties['Street'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['City'] !== null ? autolinker.link(feature.properties['City'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['State Code'] !== null ? autolinker.link(feature.properties['State Code'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ZIP Code'] !== null ? autolinker.link(feature.properties['ZIP Code'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['eMail (1st)'] !== null ? autolinker.link(feature.properties['eMail (1st)'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['eMail (2nd)'] !== null ? autolinker.link(feature.properties['eMail (2nd)'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td class="visible-with-data" id="Cell Phone"colspan="2"><strong>Cell Phone</strong><br />' + (feature.properties['Cell Phone'] !== null ? autolinker.link(feature.properties['Cell Phone'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td class="visible-with-data" id="Home Phone"colspan="2"><strong>Home Phone</strong><br />' + (feature.properties['Home Phone'] !== null ? autolinker.link(feature.properties['Home Phone'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_Master_9_0() {
+            return {
+                pane: 'pane_Master_9',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(229,182,54,1.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_Master_9');
+        map.getPane('pane_Master_9').style.zIndex = 409;
+        map.getPane('pane_Master_9').style['mix-blend-mode'] = 'normal';
+        var layer_Master_9 = new L.geoJson(json_Master_9, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_Master_9',
+            layerName: 'layer_Master_9',
+            pane: 'pane_Master_9',
+            onEachFeature: pop_Master_9,
+            pointToLayer: function (feature, latlng) {
+                var context = {
+                    feature: feature,
+                    variables: {}
+                };
+                return L.circleMarker(latlng, style_Master_9_0(feature));
+            },
+        });
+        bounds_group.addLayer(layer_Master_9);
+        map.addLayer(layer_Master_9);
+        var osmGeocoder = new L.Control.Geocoder({
+            collapsed: true,
+            position: 'topleft',
+            text: 'Search',
+            title: 'Testing'
+        }).addTo(map);
+        document.getElementsByClassName('leaflet-control-geocoder-icon')[0]
+        .className += ' fa fa-search';
+        document.getElementsByClassName('leaflet-control-geocoder-icon')[0]
+        .title += 'Search for a place';
+        var overlaysTree = [
+            {label: '<img src="legend/Master_9.png" /> Master', layer: layer_Master_9},
+            {label: '<img src="legend/MasterwNames_8.png" /> Master w/Names', layer: layer_MasterwNames_8},
+            {label: '<img src="legend/MasterClustered_7.png" /> Master-Clustered', layer: cluster_MasterClustered_7},
+            {label: '<img src="legend/MasterStateTotals_6.png" /> Master-State Totals', layer: cluster_MasterStateTotals_6},
+            {label: "Map-Outline", layer: layer_MapOutline_5},
+            {label: "Map-OSM Road", layer: layer_MapOSMRoad_4},
+            {label: "Map-Google Road", layer: layer_MapGoogleRoad_3},
+            {label: "Map-Google Satellite", layer: layer_MapGoogleSatellite_2},
+            {label: "Map-Google Hybrid", layer: layer_MapGoogleHybrid_1},
+            {label: "Map-Waze Road", layer: layer_MapWazeRoad_0},]
+        var lay = L.control.layers.tree(null, overlaysTree,{
+            //namedToggle: true,
+            //selectorBack: false,
+            //closedSymbol: '&#8862; &#x1f5c0;',
+            //openedSymbol: '&#8863; &#x1f5c1;',
+            //collapseAll: 'Collapse all',
+            //expandAll: 'Expand all',
+            collapsed: false, 
+        });
+        lay.addTo(map);
+		document.addEventListener("DOMContentLoaded", function() {
+            // set new Layers List height which considers toggle icon
+            function newLayersListHeight() {
+                var layerScrollbarElement = document.querySelector('.leaflet-control-layers-scrollbar');
+                if (layerScrollbarElement) {
+                    var layersListElement = document.querySelector('.leaflet-control-layers-list');
+                    var originalHeight = layersListElement.style.height 
+                        || window.getComputedStyle(layersListElement).height;
+                    var newHeight = parseFloat(originalHeight) - 50;
+                    layersListElement.style.height = newHeight + 'px';
+                }
+            }
+            var isLayersListExpanded = true;
+            var controlLayersElement = document.querySelector('.leaflet-control-layers');
+            var toggleLayerControl = document.querySelector('.leaflet-control-layers-toggle');
+            // toggle Collapsed/Expanded and apply new Layers List height
+            toggleLayerControl.addEventListener('click', function() {
+                if (isLayersListExpanded) {
+                    controlLayersElement.classList.remove('leaflet-control-layers-expanded');
+                } else {
+                    controlLayersElement.classList.add('leaflet-control-layers-expanded');
+                }
+                isLayersListExpanded = !isLayersListExpanded;
+                newLayersListHeight()
+            });	
+			// apply new Layers List height if toggle layerstree
+			if (controlLayersElement) {
+				controlLayersElement.addEventListener('click', function(event) {
+					var toggleLayerHeaderPointer = event.target.closest('.leaflet-layerstree-header-pointer span');
+					if (toggleLayerHeaderPointer) {
+						newLayersListHeight();
+					}
+				});
+			}
+            // Collapsed/Expanded at Start to apply new height
+            setTimeout(function() {
+                toggleLayerControl.click();
+            }, 10);
+            setTimeout(function() {
+                toggleLayerControl.click();
+            }, 10);
+            // Collapsed touch/small screen
+            var isSmallScreen = window.innerWidth < 650;
+            if (isSmallScreen) {
+                setTimeout(function() {
+                    controlLayersElement.classList.remove('leaflet-control-layers-expanded');
+                    isLayersListExpanded = !isLayersListExpanded;
+                }, 500);
+            }  
+        });       
+        setBounds();
+        var i = 0;
+        layer_MasterStateTotals_6.eachLayer(function(layer) {
+            var context = {
+                feature: layer.feature,
+                variables: {}
+            };
+            layer.bindTooltip((layer.feature.properties['Name'] !== null?String('<div style="color: #323232; font-size: 10pt; font-family: \'Open Sans\', sans-serif;">' + layer.feature.properties['Name']) + '</div>':''), {permanent: true, offset: [-0, -16], className: 'css_MasterStateTotals_6'});
+            labels.push(layer);
+            totalMarkers += 1;
+              layer.added = true;
+              addLabel(layer, i);
+              i++;
+        });
+        var i = 0;
+        layer_MasterClustered_7.eachLayer(function(layer) {
+            var context = {
+                feature: layer.feature,
+                variables: {}
+            };
+            layer.bindTooltip((layer.feature.properties['Name'] !== null?String('<div style="color: #323232; font-size: 10pt; font-family: \'Open Sans\', sans-serif;">' + layer.feature.properties['Name']) + '</div>':''), {permanent: true, offset: [-0, -16], className: 'css_MasterClustered_7'});
+            labels.push(layer);
+            totalMarkers += 1;
+              layer.added = true;
+              addLabel(layer, i);
+              i++;
+        });
+        var i = 0;
+        layer_MasterwNames_8.eachLayer(function(layer) {
+            var context = {
+                feature: layer.feature,
+                variables: {}
+            };
+            layer.bindTooltip((layer.feature.properties['Name'] !== null?String('<div style="color: #323232; font-size: 10pt; font-family: \'Open Sans\', sans-serif;">' + layer.feature.properties['Name']) + '</div>':''), {permanent: true, offset: [-0, -16], className: 'css_MasterwNames_8'});
+            labels.push(layer);
+            totalMarkers += 1;
+              layer.added = true;
+              addLabel(layer, i);
+              i++;
+        });
+        map.addControl(new L.Control.Search({
+            layer: layer_Master_9,
+            initial: false,
+            hideMarkerOnCollapse: true,
+            propertyName: 'Name'}));
+        document.getElementsByClassName('search-button')[0].className +=
+         ' fa fa-binoculars';
+        var mapDiv = document.getElementById('map');
+        var row = document.createElement('div');
+        row.className="row";
+        row.id="all";
+        row.style.height = "100%";
+        var col1 = document.createElement('div');
+        col1.className="col9";
+        col1.id = "mapWindow";
+        col1.style.height = "99%";
+        col1.style.width = "80%";
+        col1.style.display = "inline-block";
+        var col2 = document.createElement('div');
+        col2.className="col3";
+        col2.id = "menu";
+        col2.style.display = "inline-block";
+        mapDiv.parentNode.insertBefore(row, mapDiv);
+        document.getElementById("all").appendChild(col1);
+        document.getElementById("all").appendChild(col2);
+        col1.appendChild(mapDiv)
+        var Filters = {"State Code": "str","Group-Class": "str","Name": "str","Address Type": "str","Group-Boys-Crew": "str","Deceased?": "str"};
+        function filterFunc() {
+          map.eachLayer(function(lyr){
+          if ("options" in lyr && "dataVar" in lyr["options"]){
+            features = this[lyr["options"]["dataVar"]].features.slice(0);
+            try{
+              for (key in Filters){
+                keyS = key.replace(/[^a-zA-Z0-9_]/g, "")
+                if (Filters[key] == "str" || Filters[key] == "bool"){
+                  var selection = [];
+                  var options = document.getElementById("sel_" + keyS).options
+                  for (var i=0; i < options.length; i++) {
+                    if (options[i].selected) selection.push(options[i].value);
+                  }
+                    try{
+                      if (key in features[0].properties){
+                        for (i = features.length - 1;
+                          i >= 0; --i){
+                          if (selection.indexOf(
+                          features[i].properties[key])<0
+                          && selection.length>0) {
+                          features.splice(i,1);
+                          }
+                        }
+                      }
+                    } catch(err){
+                  }
+                }
+                if (Filters[key] == "int"){
+                  sliderVals =  document.getElementById(
+                    "div_" + keyS).noUiSlider.get();
+                  try{
+                    if (key in features[0].properties){
+                    for (i = features.length - 1; i >= 0; --i){
+                      if (parseInt(features[i].properties[key])
+                          < sliderVals[0]
+                          || parseInt(features[i].properties[key])
+                          > sliderVals[1]){
+                            features.splice(i,1);
+                          }
+                        }
+                      }
+                    } catch(err){
+                    }
+                  }
+                if (Filters[key] == "real"){
+                  sliderVals =  document.getElementById(
+                    "div_" + keyS).noUiSlider.get();
+                  try{
+                    if (key in features[0].properties){
+                    for (i = features.length - 1; i >= 0; --i){
+                      if (features[i].properties[key]
+                          < sliderVals[0]
+                          || features[i].properties[key]
+                          > sliderVals[1]){
+                            features.splice(i,1);
+                          }
+                        }
+                      }
+                    } catch(err){
+                    }
+                  }
+                if (Filters[key] == "date"
+                  || Filters[key] == "datetime"
+                  || Filters[key] == "time"){
+                  try{
+                    if (key in features[0].properties){
+                      HTMLkey = key.replace(/[&\/\\#,+()$~%.'":*?<>{} ]/g, '');
+                      startdate = document.getElementById("dat_" +
+                        HTMLkey + "_date1").value.replace(" ", "T");
+                      enddate = document.getElementById("dat_" +
+                        HTMLkey + "_date2").value.replace(" ", "T");
+                      for (i = features.length - 1; i >= 0; --i){
+                        if (features[i].properties[key] < startdate
+                          || features[i].properties[key] > enddate){
+                          features.splice(i,1);
+                        }
+                      }
+                    }
+                  } catch(err){
+                  }
+                }
+              }
+            } catch(err){
+            }
+          this[lyr["options"]["layerName"]].clearLayers();
+          this[lyr["options"]["layerName"]].addData(features);
+        var i = 0;
+        layer_MasterStateTotals_6.eachLayer(function(layer) {
+            var context = {
+                feature: layer.feature,
+                variables: {}
+            };
+            layer.bindTooltip((layer.feature.properties['Name'] !== null?String('<div style="color: #323232; font-size: 10pt; font-family: \'Open Sans\', sans-serif;">' + layer.feature.properties['Name']) + '</div>':''), {permanent: true, offset: [-0, -16], className: 'css_MasterStateTotals_6'});
+            labels.push(layer);
+            totalMarkers += 1;
+              layer.added = true;
+              addLabel(layer, i);
+              i++;
+        });
+        var i = 0;
+        layer_MasterClustered_7.eachLayer(function(layer) {
+            var context = {
+                feature: layer.feature,
+                variables: {}
+            };
+            layer.bindTooltip((layer.feature.properties['Name'] !== null?String('<div style="color: #323232; font-size: 10pt; font-family: \'Open Sans\', sans-serif;">' + layer.feature.properties['Name']) + '</div>':''), {permanent: true, offset: [-0, -16], className: 'css_MasterClustered_7'});
+            labels.push(layer);
+            totalMarkers += 1;
+              layer.added = true;
+              addLabel(layer, i);
+              i++;
+        });
+        var i = 0;
+        layer_MasterwNames_8.eachLayer(function(layer) {
+            var context = {
+                feature: layer.feature,
+                variables: {}
+            };
+            layer.bindTooltip((layer.feature.properties['Name'] !== null?String('<div style="color: #323232; font-size: 10pt; font-family: \'Open Sans\', sans-serif;">' + layer.feature.properties['Name']) + '</div>':''), {permanent: true, offset: [-0, -16], className: 'css_MasterwNames_8'});
+            labels.push(layer);
+            totalMarkers += 1;
+              layer.added = true;
+              addLabel(layer, i);
+              i++;
+        });
+          }
+          })
+        }
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_StateCode = document.createElement('div');
+            div_StateCode.id = "div_StateCode";
+            div_StateCode.className= "filterselect";
+            document.getElementById("menu").appendChild(div_StateCode);
+            sel_StateCode = document.createElement('select');
+            sel_StateCode.multiple = true;
+            sel_StateCode.size = 10;
+            sel_StateCode.id = "sel_StateCode";
+            var StateCode_options_str = "<option value='' unselected></option>";
+            sel_StateCode.onchange = function(){filterFunc()};
+            StateCode_options_str  += '<option value="AZ">AZ</option>';
+            StateCode_options_str  += '<option value="CA">CA</option>';
+            StateCode_options_str  += '<option value="CO">CO</option>';
+            StateCode_options_str  += '<option value="CT">CT</option>';
+            StateCode_options_str  += '<option value="DE">DE</option>';
+            StateCode_options_str  += '<option value="FL">FL</option>';
+            StateCode_options_str  += '<option value="IL">IL</option>';
+            StateCode_options_str  += '<option value="KY">KY</option>';
+            StateCode_options_str  += '<option value="MA">MA</option>';
+            StateCode_options_str  += '<option value="MD">MD</option>';
+            StateCode_options_str  += '<option value="NC">NC</option>';
+            StateCode_options_str  += '<option value="NJ">NJ</option>';
+            StateCode_options_str  += '<option value="NY">NY</option>';
+            StateCode_options_str  += '<option value="PA">PA</option>';
+            StateCode_options_str  += '<option value="TX">TX</option>';
+            StateCode_options_str  += '<option value="WA">WA</option>';
+            sel_StateCode.innerHTML = StateCode_options_str;
+            div_StateCode.appendChild(sel_StateCode);
+            var lab_StateCode = document.createElement('div');
+            lab_StateCode.innerHTML = 'State Code';
+            lab_StateCode.className = 'filterlabel';
+            div_StateCode.appendChild(lab_StateCode);
+            var reset_StateCode = document.createElement('div');
+            reset_StateCode.innerHTML = 'clear filter';
+            reset_StateCode.className = 'filterlabel';
+            reset_StateCode.onclick = function() {
+                var options = document.getElementById("sel_StateCode").options;
+                for (var i=0; i < options.length; i++) {
+                    options[i].selected = false;
+                }
+                filterFunc();
+            };
+            div_StateCode.appendChild(reset_StateCode);
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_GroupClass = document.createElement('div');
+            div_GroupClass.id = "div_GroupClass";
+            div_GroupClass.className= "filterselect";
+            document.getElementById("menu").appendChild(div_GroupClass);
+            sel_GroupClass = document.createElement('select');
+            sel_GroupClass.multiple = true;
+            sel_GroupClass.size = 10;
+            sel_GroupClass.id = "sel_GroupClass";
+            var GroupClass_options_str = "<option value='' unselected></option>";
+            sel_GroupClass.onchange = function(){filterFunc()};
+            GroupClass_options_str  += '<option value="NULL">NULL</option>';
+            GroupClass_options_str  += '<option value="Class of 1970">Class of 1970</option>';
+            GroupClass_options_str  += '<option value="Class of 1971">Class of 1971</option>';
+            GroupClass_options_str  += '<option value="Class of 1972">Class of 1972</option>';
+            GroupClass_options_str  += '<option value="Class of 1973">Class of 1973</option>';
+            GroupClass_options_str  += '<option value="Class of 1974">Class of 1974</option>';
+            GroupClass_options_str  += '<option value="Class of 1975">Class of 1975</option>';
+            GroupClass_options_str  += '<option value="Class of 1975 - DECEASED">Class of 1975 - DECEASED</option>';
+            GroupClass_options_str  += '<option value="Class of 1976">Class of 1976</option>';
+            GroupClass_options_str  += '<option value="Class of 1977">Class of 1977</option>';
+            GroupClass_options_str  += '<option value="Class of 1978">Class of 1978</option>';
+            GroupClass_options_str  += '<option value="Class of 1979">Class of 1979</option>';
+            GroupClass_options_str  += '<option value="Class of 1980">Class of 1980</option>';
+            GroupClass_options_str  += '<option value="Class of 1982">Class of 1982</option>';
+            GroupClass_options_str  += '<option value="Class of 1984">Class of 1984</option>';
+            GroupClass_options_str  += '<option value="Class of 2007">Class of 2007</option>';
+            GroupClass_options_str  += '<option value="State">State</option>';
+            sel_GroupClass.innerHTML = GroupClass_options_str;
+            div_GroupClass.appendChild(sel_GroupClass);
+            var lab_GroupClass = document.createElement('div');
+            lab_GroupClass.innerHTML = 'Group-Class';
+            lab_GroupClass.className = 'filterlabel';
+            div_GroupClass.appendChild(lab_GroupClass);
+            var reset_GroupClass = document.createElement('div');
+            reset_GroupClass.innerHTML = 'clear filter';
+            reset_GroupClass.className = 'filterlabel';
+            reset_GroupClass.onclick = function() {
+                var options = document.getElementById("sel_GroupClass").options;
+                for (var i=0; i < options.length; i++) {
+                    options[i].selected = false;
+                }
+                filterFunc();
+            };
+            div_GroupClass.appendChild(reset_GroupClass);
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_Name = document.createElement('div');
+            div_Name.id = "div_Name";
+            div_Name.className= "filterselect";
+            document.getElementById("menu").appendChild(div_Name);
+            sel_Name = document.createElement('select');
+            sel_Name.multiple = true;
+            sel_Name.size = 10;
+            sel_Name.id = "sel_Name";
+            var Name_options_str = "<option value='' unselected></option>";
+            sel_Name.onchange = function(){filterFunc()};
+            Name_options_str  += '<option value="Arizona (1)">Arizona (1)</option>';
+            Name_options_str  += '<option value="Ayvazian, Berge">Ayvazian, Berge</option>';
+            Name_options_str  += '<option value="Bacci, Rick">Bacci, Rick</option>';
+            Name_options_str  += '<option value="Berkheimer, Mike">Berkheimer, Mike</option>';
+            Name_options_str  += '<option value="Boyle, john">Boyle, john</option>';
+            Name_options_str  += '<option value="Brok, Victor">Brok, Victor</option>';
+            Name_options_str  += '<option value="Bucher, Bob">Bucher, Bob</option>';
+            Name_options_str  += '<option value="California (1)">California (1)</option>';
+            Name_options_str  += '<option value="Clauss, Ryan">Clauss, Ryan</option>';
+            Name_options_str  += '<option value="Collins, Jeff">Collins, Jeff</option>';
+            Name_options_str  += '<option value="Collins, Peter">Collins, Peter</option>';
+            Name_options_str  += '<option value="Colorado (1)">Colorado (1)</option>';
+            Name_options_str  += '<option value="Connecticut (6)">Connecticut (6)</option>';
+            Name_options_str  += '<option value="Cuskey, Steven (Steve)">Cuskey, Steven (Steve)</option>';
+            Name_options_str  += '<option value="Davis, Christopher">Davis, Christopher</option>';
+            Name_options_str  += '<option value="DeSousa, Robert (Bob)">DeSousa, Robert (Bob)</option>';
+            Name_options_str  += '<option value="Delaware (1)">Delaware (1)</option>';
+            Name_options_str  += '<option value="Denitzio, Robert">Denitzio, Robert</option>';
+            Name_options_str  += '<option value="Deyle, Mark">Deyle, Mark</option>';
+            Name_options_str  += '<option value="Duval, Richard (Rich)">Duval, Richard (Rich)</option>';
+            Name_options_str  += '<option value="Ennis, Rick">Ennis, Rick</option>';
+            Name_options_str  += '<option value="Ernst, William (Bill)">Ernst, William (Bill)</option>';
+            Name_options_str  += '<option value="Faassen, John">Faassen, John</option>';
+            Name_options_str  += '<option value="Fechter, Ed">Fechter, Ed</option>';
+            Name_options_str  += '<option value="Florida (3)">Florida (3)</option>';
+            Name_options_str  += '<option value="Foster, Bob">Foster, Bob</option>';
+            Name_options_str  += '<option value="Goodwillie, Edward (Ed)">Goodwillie, Edward (Ed)</option>';
+            Name_options_str  += '<option value="Gralley, Kevin">Gralley, Kevin</option>';
+            Name_options_str  += '<option value="Healy, Peter Burke">Healy, Peter Burke</option>';
+            Name_options_str  += '<option value="Henkelman, jim">Henkelman, jim</option>';
+            Name_options_str  += '<option value="Illinois (1)">Illinois (1)</option>';
+            Name_options_str  += '<option value="Isken, Donald (Don)J">Isken, Donald (Don)J</option>';
+            Name_options_str  += '<option value="Jackson, Robert (Bob)">Jackson, Robert (Bob)</option>';
+            Name_options_str  += '<option value="Jackson, Tom">Jackson, Tom</option>';
+            Name_options_str  += '<option value="Jangraw, Douglas (Doug)">Jangraw, Douglas (Doug)</option>';
+            Name_options_str  += '<option value="Kentucky (1)">Kentucky (1)</option>';
+            Name_options_str  += '<option value="Klein, Malcolm">Klein, Malcolm</option>';
+            Name_options_str  += '<option value="Klokis, Robert (Bob)">Klokis, Robert (Bob)</option>';
+            Name_options_str  += '<option value="Kochka, Charles">Kochka, Charles</option>';
+            Name_options_str  += '<option value="Kownurko, Nick">Kownurko, Nick</option>';
+            Name_options_str  += '<option value="Levine, Howie">Levine, Howie</option>';
+            Name_options_str  += '<option value="Lyon, Jeff">Lyon, Jeff</option>';
+            Name_options_str  += '<option value="Lyon, Michael (Mike)">Lyon, Michael (Mike)</option>';
+            Name_options_str  += '<option value="Lyon, Steve">Lyon, Steve</option>';
+            Name_options_str  += '<option value="Macgregor, David (Dave)">Macgregor, David (Dave)</option>';
+            Name_options_str  += '<option value="Maryland (5)">Maryland (5)</option>';
+            Name_options_str  += '<option value="Massachusetts (2)">Massachusetts (2)</option>';
+            Name_options_str  += '<option value="Mceachern, James">Mceachern, James</option>';
+            Name_options_str  += '<option value="Mceachern, Walt">Mceachern, Walt</option>';
+            Name_options_str  += '<option value="Miller, Ken">Miller, Ken</option>';
+            Name_options_str  += '<option value="Miller, R. James (Jimmy)">Miller, R. James (Jimmy)</option>';
+            Name_options_str  += '<option value="Mohan, Jim">Mohan, Jim</option>';
+            Name_options_str  += '<option value="Motz, Dwight">Motz, Dwight</option>';
+            Name_options_str  += '<option value="Nadler, Ken">Nadler, Ken</option>';
+            Name_options_str  += '<option value="New Jersey (5)">New Jersey (5)</option>';
+            Name_options_str  += '<option value="New York (3)">New York (3)</option>';
+            Name_options_str  += '<option value="Nichols, Scott">Nichols, Scott</option>';
+            Name_options_str  += '<option value="North Carolina (1)">North Carolina (1)</option>';
+            Name_options_str  += '<option value="O&apos;Neil, Daniel (Dan)Patrick">O&apos;Neil, Daniel (Dan)Patrick</option>';
+            Name_options_str  += '<option value="Parker, John Hocking">Parker, John Hocking</option>';
+            Name_options_str  += '<option value="Pennsylvania (19)">Pennsylvania (19)</option>';
+            Name_options_str  += '<option value="Phalen, Dennis">Phalen, Dennis</option>';
+            Name_options_str  += '<option value="Picht, Eric">Picht, Eric</option>';
+            Name_options_str  += '<option value="Pierce, Charles (Chuck)">Pierce, Charles (Chuck)</option>';
+            Name_options_str  += '<option value="Rastede, Don">Rastede, Don</option>';
+            Name_options_str  += '<option value="Rifkin, Dave">Rifkin, Dave</option>';
+            Name_options_str  += '<option value="Rinehart, William (Bill)">Rinehart, William (Bill)</option>';
+            Name_options_str  += '<option value="Rittase, Bob">Rittase, Bob</option>';
+            Name_options_str  += '<option value="Robertson, Walt">Robertson, Walt</option>';
+            Name_options_str  += '<option value="Rusiewicz, Joe">Rusiewicz, Joe</option>';
+            Name_options_str  += '<option value="Santoli, Eugene (Geno)">Santoli, Eugene (Geno)</option>';
+            Name_options_str  += '<option value="Setman, Mark">Setman, Mark</option>';
+            Name_options_str  += '<option value="Sheehy, Jay">Sheehy, Jay</option>';
+            Name_options_str  += '<option value="Stanton, Dave">Stanton, Dave</option>';
+            Name_options_str  += '<option value="Texas (15)">Texas (15)</option>';
+            Name_options_str  += '<option value="Thomas [Bogucki], Edward (Ed)">Thomas [Bogucki], Edward (Ed)</option>';
+            Name_options_str  += '<option value="Townsend, Gary">Townsend, Gary</option>';
+            Name_options_str  += '<option value="Vose, James Baldwin">Vose, James Baldwin</option>';
+            Name_options_str  += '<option value="Walsh, Mike">Walsh, Mike</option>';
+            Name_options_str  += '<option value="Washington (1)">Washington (1)</option>';
+            Name_options_str  += '<option value="Webster, Charles">Webster, Charles</option>';
+            Name_options_str  += '<option value="Welsh, Bob">Welsh, Bob</option>';
+            Name_options_str  += '<option value="Wirth, Gary">Wirth, Gary</option>';
+            Name_options_str  += '<option value="Zeile, David (Dave)">Zeile, David (Dave)</option>';
+            Name_options_str  += '<option value="Zucco, John (Jack)Warner">Zucco, John (Jack)Warner</option>';
+            sel_Name.innerHTML = Name_options_str;
+            div_Name.appendChild(sel_Name);
+            var lab_Name = document.createElement('div');
+            lab_Name.innerHTML = 'Name';
+            lab_Name.className = 'filterlabel';
+            div_Name.appendChild(lab_Name);
+            var reset_Name = document.createElement('div');
+            reset_Name.innerHTML = 'clear filter';
+            reset_Name.className = 'filterlabel';
+            reset_Name.onclick = function() {
+                var options = document.getElementById("sel_Name").options;
+                for (var i=0; i < options.length; i++) {
+                    options[i].selected = false;
+                }
+                filterFunc();
+            };
+            div_Name.appendChild(reset_Name);
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_AddressType = document.createElement('div');
+            div_AddressType.id = "div_AddressType";
+            div_AddressType.className= "filterselect";
+            document.getElementById("menu").appendChild(div_AddressType);
+            sel_AddressType = document.createElement('select');
+            sel_AddressType.multiple = true;
+            sel_AddressType.size = 2;
+            sel_AddressType.id = "sel_AddressType";
+            var AddressType_options_str = "<option value='' unselected></option>";
+            sel_AddressType.onchange = function(){filterFunc()};
+            AddressType_options_str  += '<option value="Primary Address">Primary Address</option>';
+            AddressType_options_str  += '<option value="State">State</option>';
+            sel_AddressType.innerHTML = AddressType_options_str;
+            div_AddressType.appendChild(sel_AddressType);
+            var lab_AddressType = document.createElement('div');
+            lab_AddressType.innerHTML = 'Address Type';
+            lab_AddressType.className = 'filterlabel';
+            div_AddressType.appendChild(lab_AddressType);
+            var reset_AddressType = document.createElement('div');
+            reset_AddressType.innerHTML = 'clear filter';
+            reset_AddressType.className = 'filterlabel';
+            reset_AddressType.onclick = function() {
+                var options = document.getElementById("sel_AddressType").options;
+                for (var i=0; i < options.length; i++) {
+                    options[i].selected = false;
+                }
+                filterFunc();
+            };
+            div_AddressType.appendChild(reset_AddressType);
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_GroupBoysCrew = document.createElement('div');
+            div_GroupBoysCrew.id = "div_GroupBoysCrew";
+            div_GroupBoysCrew.className= "filterselect";
+            document.getElementById("menu").appendChild(div_GroupBoysCrew);
+            sel_GroupBoysCrew = document.createElement('select');
+            sel_GroupBoysCrew.multiple = true;
+            sel_GroupBoysCrew.size = 6;
+            sel_GroupBoysCrew.id = "sel_GroupBoysCrew";
+            var GroupBoysCrew_options_str = "<option value='' unselected></option>";
+            sel_GroupBoysCrew.onchange = function(){filterFunc()};
+            GroupBoysCrew_options_str  += '<option value="BU-Fraternity-OX">BU-Fraternity-OX</option>';
+            GroupBoysCrew_options_str  += '<option value="BU-Fraternity-Other">BU-Fraternity-Other</option>';
+            GroupBoysCrew_options_str  += '<option value="BU-Fraternity-SPE">BU-Fraternity-SPE</option>';
+            GroupBoysCrew_options_str  += '<option value="BU-Fraternity-TKE">BU-Fraternity-TKE</option>';
+            GroupBoysCrew_options_str  += '<option value="NON-BU-OX-YFIO">NON-BU-OX-YFIO</option>';
+            GroupBoysCrew_options_str  += '<option value="State">State</option>';
+            sel_GroupBoysCrew.innerHTML = GroupBoysCrew_options_str;
+            div_GroupBoysCrew.appendChild(sel_GroupBoysCrew);
+            var lab_GroupBoysCrew = document.createElement('div');
+            lab_GroupBoysCrew.innerHTML = 'Group-Boys-Crew';
+            lab_GroupBoysCrew.className = 'filterlabel';
+            div_GroupBoysCrew.appendChild(lab_GroupBoysCrew);
+            var reset_GroupBoysCrew = document.createElement('div');
+            reset_GroupBoysCrew.innerHTML = 'clear filter';
+            reset_GroupBoysCrew.className = 'filterlabel';
+            reset_GroupBoysCrew.onclick = function() {
+                var options = document.getElementById("sel_GroupBoysCrew").options;
+                for (var i=0; i < options.length; i++) {
+                    options[i].selected = false;
+                }
+                filterFunc();
+            };
+            div_GroupBoysCrew.appendChild(reset_GroupBoysCrew);
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_Deceased = document.createElement('div');
+            div_Deceased.id = "div_Deceased";
+            div_Deceased.className= "filterselect";
+            document.getElementById("menu").appendChild(div_Deceased);
+            sel_Deceased = document.createElement('select');
+            sel_Deceased.multiple = true;
+            sel_Deceased.size = 3;
+            sel_Deceased.id = "sel_Deceased";
+            var Deceased_options_str = "<option value='' unselected></option>";
+            sel_Deceased.onchange = function(){filterFunc()};
+            Deceased_options_str  += '<option value="NULL">NULL</option>';
+            Deceased_options_str  += '<option value="Deceased">Deceased</option>';
+            Deceased_options_str  += '<option value="N/A">N/A</option>';
+            sel_Deceased.innerHTML = Deceased_options_str;
+            div_Deceased.appendChild(sel_Deceased);
+            var lab_Deceased = document.createElement('div');
+            lab_Deceased.innerHTML = 'Deceased?';
+            lab_Deceased.className = 'filterlabel';
+            div_Deceased.appendChild(lab_Deceased);
+            var reset_Deceased = document.createElement('div');
+            reset_Deceased.innerHTML = 'clear filter';
+            reset_Deceased.className = 'filterlabel';
+            reset_Deceased.onclick = function() {
+                var options = document.getElementById("sel_Deceased").options;
+                for (var i=0; i < options.length; i++) {
+                    options[i].selected = false;
+                }
+                filterFunc();
+            };
+            div_Deceased.appendChild(reset_Deceased);
+        resetLabels([layer_MasterStateTotals_6,layer_MasterClustered_7,layer_MasterwNames_8]);
+        map.on("zoomend", function(){
+            resetLabels([layer_MasterStateTotals_6,layer_MasterClustered_7,layer_MasterwNames_8]);
+        });
+        map.on("layeradd", function(){
+            resetLabels([layer_MasterStateTotals_6,layer_MasterClustered_7,layer_MasterwNames_8]);
+        });
+        map.on("layerremove", function(){
+            resetLabels([layer_MasterStateTotals_6,layer_MasterClustered_7,layer_MasterwNames_8]);
+        });
+        </script>
+    </body>
+</html>
